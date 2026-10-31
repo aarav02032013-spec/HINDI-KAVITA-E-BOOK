@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>कविता प्रबंधन प्रणाली | Hindi Kavita Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Martel:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Devanagari', sans-serif; }
+    .font-kavita-title { font-family: 'Rozha One', serif; }
+    .font-kavita-body { font-family: 'Martel', serif; }
+  </style>
+</head>
+<body class="bg-stone-100 text-stone-900 min-h-screen">
+
+  <!-- Navigation / Header -->
+  <header class="bg-amber-950 text-amber-50 px-6 py-4 shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">🪶</span>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold tracking-wide font-kavita-title">कविता सागर — व्यवस्थापक (Admin)</h1>
+          <p class="text-xs text-amber-300">Hindi Poetry Content Management System</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="storageModeBadge" class="text-xs bg-emerald-800 text-emerald-200 px-3 py-1 rounded-full font-medium">
+          डेमो मोड (LocalStorage)
+        </span>
+        <button id="openConfigBtn" class="text-xs bg-amber-800 hover:bg-amber-700 text-amber-100 px-3 py-1.5 rounded-lg border border-amber-600 transition">
+          ⚙️ Firebase सेटिंग्स
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Firebase Setup Modal -->
+  <div id="configModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <h3 class="text-lg font-bold text-stone-900">Firebase Configuration</h3>
+        <button id="closeConfigBtn" class="text-stone-400 hover:text-stone-700 text-xl font-bold">&times;</button>
+      </div>
+      <p class="text-xs text-stone-600 mb-3">
+        Paste your Firebase Web app config JSON below to connect to live Cloud Firestore. If left blank, the dashboard will use LocalStorage automatically.
+      </p>
+      <textarea id="firebaseConfigInput" rows="7" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "app.firebaseapp.com",
+  "projectId": "my-app",
+  "storageBucket": "my-app.appspot.com",
+  "messagingSenderId": "123456",
+  "appId": "1:123456:web:..."
+}' class="w-full font-mono text-xs p-3 border rounded-xl bg-stone-50 focus:ring-2 focus:ring-amber-800 outline-none"></textarea>
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="clearConfigBtn" class="px-4 py-2 text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl font-semibold">
+          Reset to Demo Mode
+        </button>
+        <button id="saveConfigBtn" class="px-5 py-2 text-xs text-white bg-amber-900 hover:bg-amber-800 rounded-xl font-semibold shadow">
+          Save & Connect
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Left Column: Form & Editor (7 cols) -->
+    <div class="lg:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-stone-200">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <h2 id="formHeading" class="text-xl font-bold text-stone-800">नई कविता जोड़ें (Add Kavita)</h2>
+        <button id="resetBtn" type="button" class="hidden text-xs text-amber-800 hover:underline font-semibold">
+          ✕ संपादन रद्द करें (Cancel)
+        </button>
+      </div>
+
+      <form id="kavitaForm" class="space-y-4">
+        <input type="hidden" id="editPoemId" value="" />
+
+        <!-- Title -->
+        <div>
+          <label class="block text-sm font-semibold text-stone-700 mb-1">कविता का शीर्षक (Title) *</label>
+          <input type="text" id="titleInput" required placeholder="उदा. रश्मिरथी (तृतीय सर्ग)" 
+                 class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-amber-800 outline-none text-base" />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Poet Name -->
+          <div>
+            <label class="block text-sm font-semibold text-stone-700 mb-1">कवि का नाम (Poet) *</label>
+            <input type="text" id="poetInput" required placeholder="उदा. रामधारी सिंह 'दिनकर'" 
+                   class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-amber-800 outline-none text-base" />
+          </div>
+
+          <!-- Category -->
+          <div>
+            <label class="block text-sm font-semibold text-stone-700 mb-1">श्रेणी (Category) *</label>
+            <select id="categoryInput" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-amber-800 outline-none bg-white text-base">
+              <option value="वीर रस">वीर रस (Deshbhakti)</option>
+              <option value="प्रेम">शृंगार / प्रेम (Prem)</option>
+              <option value="भक्ति">भक्ति रस (Bhakti)</option>
+              <option value="प्रकृति">प्रकृति (Prakriti)</option>
+              <option value="जीवन और दर्शन">जीवन और दर्शन (Philosophy)</option>
+              <option value="हास्य / व्यंग्य">हास्य व व्यंग्य (Humor/Satire)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Devanagari Quick Punctuation Toolbar -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-sm font-semibold text-stone-700">कविता का पाठ (Poem Body) *</label>
+            <div class="flex gap-1 text-xs text-stone-600 bg-stone-100 p-1 rounded-lg">
+              <span class="px-1 text-stone-400">चिह्न:</span>
+              <button type="button" data-sym="।" class="sym-btn px-2 py-0.5 bg-white rounded shadow-sm hover:bg-stone-200">।</button>
+              <button type="button" data-sym="॥" class="sym-btn px-2 py-0.5 bg-white rounded shadow-sm hover:bg-stone-200">॥</button>
+              <button type="button" data-sym="ँ" class="sym-btn px-2 py-0.5 bg-white rounded shadow-sm hover:bg-stone-200">ँ</button>
+              <button type="button" data-sym="ं" class="sym-btn px-2 py-0.5 bg-white rounded shadow-sm hover:bg-stone-200">ं</button>
+              <button type="button" data-sym="ः" class="sym-btn px-2 py-0.5 bg-white rounded shadow-sm hover:bg-stone-200">ः</button>
+            </div>
+          </div>
+          <textarea id="bodyInput" required rows="9" 
+                    placeholder="यहाँ छंद, दोहा या पद्य लिखें... (Devanagari Unicode supported)"
+                    class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-amber-800 outline-none font-kavita-body leading-relaxed text-base"></textarea>
+        </div>
+
+        <!-- Publishing Status Toggle -->
+        <div class="flex items-center justify-between py-2 border-t border-b">
+          <div>
+            <span class="font-semibold text-sm text-stone-800">प्रकाशन स्थिति (Publish Status)</span>
+            <p class="text-xs text-stone-500">प्रकाशित होने पर कविता मोबाइल ऐप में तुरंत प्रदर्शित होगी।</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="publishToggle" class="sr-only peer" checked>
+            <div class="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="submitBtn" 
+                class="w-full bg-amber-900 hover:bg-amber-800 text-amber-50 font-bold py-3 rounded-xl shadow transition text-base">
+          कविता सहेजें (Save Kavita)
+        </button>
+      </form>
+    </div>
+
+    <!-- Right Column: Live Reader Preview & Active List (5 cols) -->
+    <div class="lg:col-span-5 space-y-6">
+
+      <!-- Live Mobile View Preview Card -->
+      <div class="bg-amber-50/70 border border-amber-200/80 p-5 rounded-2xl shadow-sm">
+        <div class="flex items-center justify-between text-xs text-amber-900 font-bold mb-3 uppercase tracking-wider">
+          <span>📱 मोबाइल पूर्वावलोकन (Live App Preview)</span>
+          <span id="previewStatus" class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">प्रकाशित</span>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-amber-100 shadow-sm text-center">
+          <span id="previewCategory" class="inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 mb-2">वीर रस</span>
+          <h3 id="previewTitle" class="text-2xl font-bold font-kavita-title text-stone-900 mb-1">शीर्षक यहाँ दिखेगा</h3>
+          <p id="previewPoet" class="text-xs text-stone-600 italic mb-4">— कवि का नाम</p>
+          <div id="previewBody" class="font-kavita-body text-stone-800 text-sm whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto px-2 text-center">
+(कविता का पाठ यहाँ लाइव प्रदर्शित होगा)
+          </div>
+        </div>
+      </div>
+
+      <!-- Published Poems List -->
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-stone-200">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-stone-800">सहेजी गई कविताएँ (All Poems)</h3>
+          <span id="poemCounter" class="text-xs bg-stone-100 px-2 py-0.5 rounded-full font-mono text-stone-700">0 कविताएँ</span>
+        </div>
+        <input type="text" id="filterInput" placeholder="सूची में खोजें..." class="w-full text-xs px-3 py-1.5 mb-3 border rounded-lg outline-none focus:ring-1 focus:ring-amber-800" />
+        <div id="poemsListContainer" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module">
+    // Default Sample Poems for immediate local testing
+    const defaultPoems = [
+      {
+        id: "kavita_rashmirathi_01",
+        title: "कृष्ण की चेतावनी (रश्मिरथी)",
+        poet_name: "रामधारी सिंह 'दिनकर'",
+        category: "वीर रस",
+        body: "वर्षों तक वन में घूम-घूम,\nबाधा-विघ्नों को चूम-चूम,\nसह धूप-घाम, पानी-पत्थर,\nपांडव आये कुछ और निखर।\n\n'दो न्याय अगर तो आधा दो,\nपर, इसमें भी यदि बाधा हो,\nतो दे दो केवल पाँच ग्राम,\nरक्खो अपनी धरती तमाम।\n\nदुर्योधन वह भी दे न सका,\nआशीष समाज की ले न सका,\nजब नाश मनुज पर छाता है,\nपहले विवेक मर जाता है।",
+        estimated_reading_minutes: 2,
+        is_published: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: "kavita_madhushala_01",
+        title: "मधुशाला",
+        poet_name: "हरिवंश राय बच्चन",
+        category: "जीवन और दर्शन",
+        body: "मृदु भावों के अंगूरों की आज बना लाया हाला,\nप्रियतम, अपने ही हाथों से आज पिलाऊँगा प्याला,\n\nपहले भोग लगा लूँ तेरा फिर प्रसाद जग पाएगा,\nसबसे पहले तेरा स्वागत करती मेरी मधुशाला।",
+        estimated_reading_minutes: 1,
+        is_published: true,
+        created_at: new Date().toISOString()
+      }
+    ];
+
+    // State
+    let poems = [];
+    let firebaseDb = null;
+    let poemsCol = null;
+
+    // DOM Elements
+    const form = document.getElementById("kavitaForm");
+    const editIdInput = document.getElementById("editPoemId");
+    const titleInput = document.getElementById("titleInput");
+    const poetInput = document.getElementById("poetInput");
+    const categoryInput = document.getElementById("categoryInput");
+    const bodyInput = document.getElementById("bodyInput");
+    const publishToggle = document.getElementById("publishToggle");
+    const resetBtn = document.getElementById("resetBtn");
+    const formHeading = document.getElementById("formHeading");
+    const filterInput = document.getElementById("filterInput");
+
+    const previewTitle = document.getElementById("previewTitle");
+    const previewPoet = document.getElementById("previewPoet");
+    const previewCategory = document.getElementById("previewCategory");
+    const previewBody = document.getElementById("previewBody");
+    const previewStatus = document.getElementById("previewStatus");
+
+    // Check Firebase configuration
+    const storedFbConfig = localStorage.getItem("firebase_kavita_config");
+
+    async function initBackend() {
+      if (storedFbConfig) {
+        try {
+          const cfg = JSON.parse(storedFbConfig);
+          const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+          const { getFirestore, collection, onSnapshot, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+          
+          const app = initializeApp(cfg);
+          firebaseDb = getFirestore(app);
+          poemsCol = collection(firebaseDb, "poems");
+
+          document.getElementById("storageModeBadge").textContent = "Cloud Firestore Live";
+          document.getElementById("storageModeBadge").className = "text-xs bg-emerald-600 text-white px-3 py-1 rounded-full font-medium";
+
+          const q = query(poemsCol, orderBy("created_at", "desc"));
+          onSnapshot(q, (snapshot) => {
+            poems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderPoemList();
+          });
+          return;
+        } catch (e) {
+          console.warn("Firebase init failed, falling back to LocalStorage:", e);
+        }
+      }
+
+      // Fallback: LocalStorage
+      const localData = localStorage.getItem("kavita_poems_local");
+      if (localData) {
+        try { poems = JSON.parse(localData); } catch (_) { poems = defaultPoems; }
+      } else {
+        poems = defaultPoems;
+        saveLocal();
+      }
+      renderPoemList();
+    }
+
+    function saveLocal() {
+      localStorage.setItem("kavita_poems_local", JSON.stringify(poems));
+      renderPoemList();
+    }
+
+    // Live preview update
+    function updateLivePreview() {
+      previewTitle.textContent = titleInput.value.trim() || "शीर्षक यहाँ दिखेगा";
+      previewPoet.textContent = poetInput.value.trim() ? `— ${poetInput.value.trim()}` : "— कवि का नाम";
+      previewCategory.textContent = categoryInput.value;
+      previewBody.textContent = bodyInput.value.trim() || "(कविता का पाठ यहाँ लाइव प्रदर्शित होगा)";
+      
+      if (publishToggle.checked) {
+        previewStatus.textContent = "प्रकाशित";
+        previewStatus.className = "bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded";
+      } else {
+        previewStatus.textContent = "ड्राफ्ट (अप्रकाशित)";
+        previewStatus.className = "bg-amber-100 text-amber-800 px-2 py-0.5 rounded";
+      }
+    }
+
+    [titleInput, poetInput, categoryInput, bodyInput, publishToggle].forEach(el => {
+      el.addEventListener("input", updateLivePreview);
+    });
+
+    // Punctuation buttons
+    document.querySelectorAll(".sym-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sym = btn.getAttribute("data-sym");
+        const start = bodyInput.selectionStart;
+        const end = bodyInput.selectionEnd;
+        bodyInput.value = bodyInput.value.substring(0, start) + sym + bodyInput.value.substring(end);
+        bodyInput.selectionStart = bodyInput.selectionEnd = start + sym.length;
+        bodyInput.focus();
+        updateLivePreview();
+      });
+    });
+
+    // Form Submit
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: titleInput.value.trim(),
+        poet_name: poetInput.value.trim(),
+        category: categoryInput.value,
+        body: bodyInput.value.trim(),
+        is_published: publishToggle.checked,
+        estimated_reading_minutes: Math.max(1, Math.round(bodyInput.value.trim().split(/\s+/).length / 70)),
+        updated_at: new Date().toISOString()
+      };
+
+      if (firebaseDb && poemsCol) {
+        const { addDoc, updateDoc, doc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        payload.updated_at = serverTimestamp();
+        if (editIdInput.value) {
+          await updateDoc(doc(firebaseDb, "poems", editIdInput.value), payload);
+        } else {
+          payload.created_at = serverTimestamp();
+          payload.likes_count = 0;
+          payload.views_count = 0;
+          await addDoc(poemsCol, payload);
+        }
+      } else {
+        // LocalStorage Mode
+        if (editIdInput.value) {
+          const idx = poems.findIndex(p => p.id === editIdInput.value);
+          if (idx !== -1) {
+            poems[idx] = { ...poems[idx], ...payload };
+          }
+        } else {
+          payload.id = "kavita_" + Date.now();
+          payload.created_at = new Date().toISOString();
+          payload.likes_count = 0;
+          payload.views_count = 0;
+          poems.unshift(payload);
+        }
+        saveLocal();
+      }
+
+      resetForm();
+    });
+
+    function resetForm() {
+      form.reset();
+      editIdInput.value = "";
+      publishToggle.checked = true;
+      resetBtn.classList.add("hidden");
+      formHeading.textContent = "नई कविता जोड़ें (Add Kavita)";
+      updateLivePreview();
+    }
+    resetBtn.addEventListener("click", resetForm);
+
+    window.editPoem = function(id) {
+      const p = poems.find(x => x.id === id);
+      if (!p) return;
+      editIdInput.value = p.id;
+      titleInput.value = p.title;
+      poetInput.value = p.poet_name;
+      categoryInput.value = p.category;
+      bodyInput.value = p.body;
+      publishToggle.checked = p.is_published;
+
+      resetBtn.classList.remove("hidden");
+      formHeading.textContent = "कविता संपादित करें (Edit Kavita)";
+      updateLivePreview();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.deletePoem = async function(id) {
+      if (!confirm("क्या आप वाकई इस कविता को हटाना चाहते हैं?")) return;
+      if (firebaseDb && poemsCol) {
+        const { deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        await deleteDoc(doc(firebaseDb, "poems", id));
+      } else {
+        poems = poems.filter(p => p.id !== id);
+        saveLocal();
+      }
+    };
+
+    function renderPoemList() {
+      const filter = (filterInput.value || "").toLowerCase().trim();
+      const container = document.getElementById("poemsListContainer");
+      const filtered = poems.filter(p => 
+        !filter || 
+        p.title.toLowerCase().includes(filter) || 
+        p.poet_name.toLowerCase().includes(filter) || 
+        p.category.toLowerCase().includes(filter)
+      );
+
+      document.getElementById("poemCounter").textContent = `${filtered.length} कविताएँ`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-xs text-stone-400 text-center py-6">कोई कविता नहीं मिली।</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(p => `
+        <div class="p-3 border rounded-xl hover:border-amber-400 transition bg-white flex justify-between items-start gap-2">
+          <div class="overflow-hidden">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${p.is_published ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-500'} font-medium">
+                ${p.is_published ? 'प्रकाशित' : 'ड्राफ्ट'}
+              </span>
+              <span class="text-[11px] text-amber-800 font-medium">${p.category}</span>
+            </div>
+            <h4 class="font-bold text-sm text-stone-900 truncate">${p.title}</h4>
+            <p class="text-xs text-stone-500 truncate">${p.poet_name}</p>
+          </div>
+          <div class="flex gap-1.5 shrink-0">
+            <button onclick="editPoem('${p.id}')" class="text-xs bg-stone-100 hover:bg-stone-200 px-2 py-1 rounded-md text-stone-700">संपादन</button>
+            <button onclick="deletePoem('${p.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-md text-rose-700">हटाएं</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    filterInput.addEventListener("input", renderPoemList);
+
+    // Modal Events
+    const configModal = document.getElementById("configModal");
+    const openConfigBtn = document.getElementById("openConfigBtn");
+    const closeConfigBtn = document.getElementById("closeConfigBtn");
+    const saveConfigBtn = document.getElementById("saveConfigBtn");
+    const clearConfigBtn = document.getElementById("clearConfigBtn");
+    const firebaseConfigInput = document.getElementById("firebaseConfigInput");
+
+    openConfigBtn.addEventListener("click", () => {
+      firebaseConfigInput.value = storedFbConfig || "";
+      configModal.classList.remove("hidden");
+    });
+    closeConfigBtn.addEventListener("click", () => configModal.classList.add("hidden"));
+
+    saveConfigBtn.addEventListener("click", () => {
+      const val = firebaseConfigInput.value.trim();
+      if (val) {
+        try {
+          JSON.parse(val);
+          localStorage.setItem("firebase_kavita_config", val);
+          location.reload();
+        } catch (e) {
+          alert("Invalid JSON format. Please verify your Firebase config JSON.");
+        }
+      }
+    });
+
+    clearConfigBtn.addEventListener("click", () => {
+      localStorage.removeItem("firebase_kavita_config");
+      location.reload();
+    });
+
+    // Start
+    initBackend();
+  </script>
+</body>
+</html>
+
